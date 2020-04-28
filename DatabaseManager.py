@@ -53,7 +53,7 @@ def ballot_exists(userid: int, votename: str):  # Returns if there is a ballot s
 def create_user(userid: int):  # Inserts a row in the members database, use this to register a new user
     if not user_exists(userid):
         with DBCursor(database) as c:
-            c.execute("INSERT INTO members VALUES (?, 0)", (userid,))
+            c.execute("INSERT INTO members VALUES (?, ?)", (userid, ""))
     else:
         raise RowExistsError  # A user may only have one entry
 
