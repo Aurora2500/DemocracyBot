@@ -2,6 +2,9 @@
 
 import _sqlite3
 
+from Ballot import Ballot
+from Vote import Vote
+
 #Name of the database file
 database = "Democracy.db"
 
@@ -36,7 +39,7 @@ def _row_exists(table, colname, col):
         return bool(c.fetchone()[0])
 
 
-def user_exists(userid: int):  # Returns True or False depending if a user rxists in the members table
+def user_exists(userid: str):  # Returns True or False depending if a user rxists in the members table
     return _row_exists(table="members", colname="userid", col=userid)
 
 
@@ -44,13 +47,13 @@ def vote_exists(votename: str):  # Returns True or False depending if a vote exi
     return _row_exists(table="votes", colname="votename", col=votename)
 
 
-def ballot_exists(userid: int, votename: str):  # Returns if there is a ballot sent by a for a vote
+def ballot_exists(userid: str, votename: str):  # Returns if there is a ballot sent by a for a vote
     with DBCursor(database) as c:
         c.execute('SELECT EXISTS(SELECT 1 FROM ballots WHERE userid = ? AND votename = ?)', (userid, votename))
         return bool(c.fetchone()[0])
 
 
-def create_user(userid: int):  # Inserts a row in the members database, use this to register a new user
+def create_user(userid: str):  # Inserts a row in the members database, use this to register a new user
     if not user_exists(userid):
         with DBCursor(database) as c:
             c.execute("INSERT INTO members VALUES (?, ?)", (userid, ""))
@@ -72,22 +75,16 @@ def create_vote(votename: str, *options):  # Creates a new vote with up to 5 opt
         raise RowExistsError  # There should only be one vote
 
 
-def cast_vote(userid: int, votename: str, *ranks):  # Used by the user to cast their ballot on a vote
-    ranktuple = tuple(  # Fills up the empty choices with a 0
-        ranks[i]
-        if len(ranks) > i
-        else 0
-        for i in range(5)
-        )
+def cast_vote(ballot: Ballot):  # Used by the user to cast their ballot on a vote
     with DBCursor(database) as c:
-        if ballot_exists(userid, votename):  # If a ballot exists it is updated instead of adding a new one
+        if ballot_exists(ballot.userid, ballot.votename):  # If a ballot exists it is updated instead of adding a new one
             c.execute('''UPDATE ballots SET rank1 = ?, rank2 = ?, rank3 = ?, rank4 = ?, rank5 = ?
-                        WHERE userid = ? AND votename = ?''', (*ranktuple, userid, votename))
+                        WHERE userid = ? AND votename = ?''', (*ballot.full_ranking, ballot.userid, ballot.votename))
         else:
-            c.execute('INSERT INTO ballots VALUES(?, ?, ?, ?, ?, ?, ?)', (userid, votename, *ranktuple))
+            c.execute('INSERT INTO ballots VALUES(?, ?, ?, ?, ?, ?, ?)', (ballot.userid, ballot.votename, *ballot.full_ranking))
 
 
-def represent(userid: int, targetid: int):  # Updates
+def represent(userid: str, targetid: str):  # Updates
     if user_exists(userid):
         with DBCursor(database) as c:
             c.execute('UPDATE members SET representativeid = ? WHERE userid = ?', (targetid, userid))
@@ -95,7 +92,7 @@ def represent(userid: int, targetid: int):  # Updates
         raise KeyError(0)
 
 
-def lookup_representative(userid: int):  #
+def lookup_representative(userid: str):  #
     with DBCursor(database) as c:
         c.execute('SELECT  representativeid FROM members WHERE userid = ?', (userid,))
         return c.fetchone()[0]
@@ -107,7 +104,7 @@ def lookup_ballots_by_vote(votename: str):
         return c.fetchall()
 
 
-def lookup_ballots_by_user(userid: int):
+def lookup_ballots_by_user(userid: str):
     with DBCursor(database) as c:
         c.execute('SELECT * FROM ballots WHERE userid = ?', (userid,))
         return c.fetchall()
@@ -119,25 +116,25 @@ def lookup_votes():
         return c.fetchall()
 
 
-def lookup_vote_by_votename(votename: str):
+def lookup_vote_by_votename(votename: str) -> Vote:
     with DBCursor(database) as c:
         c.execute('SELECT * FROM votes WHERE votename = ?', (votename,))
-        return c.fetchone()
+        return Vote.from_database(c.fetchone())
 
 
-def lookup_representing(userid: int):
+def lookup_representing(userid: str):
     with DBCursor(database) as c:
         c.execute('SELECT userid FROM members WHERE representativeid = ?', (userid,))
         return [item[0] for item in c.fetchall()]
 
 
-def delete_vote(votename: str):
+def delete_vote(votename: str) -> bool:
     if vote_exists(votename):
         with DBCursor(database) as c:
             c.execute('DELETE FROM ballots WHERE votename = ?', (votename,))
             c.execute('DELETE FROM votes WHERE votename = ?', (votename,))
-    else:
-        raise KeyError
+        return True
+    return False
 
 
 def delete_ballot(userid: int, votename: str):
