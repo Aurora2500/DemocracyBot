@@ -82,7 +82,7 @@ def cast_vote(ballot: Ballot):  # Used by the user to cast their ballot on a vot
             c.execute('''UPDATE ballots SET rank1 = ?, rank2 = ?, rank3 = ?, rank4 = ?, rank5 = ?
                         WHERE userid = ? AND votename = ?''', (*ballot.full_ranking, ballot.userid, ballot.votename))
         else:
-            c.execute('INSERT INTO ballots VALUES(?, ?, ?, ?, ?, ?, ?)', (ballot.userid, ballot.votename, *ballot.full_ranking))
+            c.execute('INSERT INTO ballots VALUES(?, ?, ?, ?, ?, ?, ?)', (ballot.votename, ballot.userid, *ballot.full_ranking))
 
 
 def represent(userid: str, targetid: str):  # Updates

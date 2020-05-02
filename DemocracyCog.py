@@ -1,7 +1,7 @@
 #DemocracyCog.py
 
 import asyncio
-from typing import List, Set
+from typing import List, Set, Optional
 from queue import Queue
 
 import discord
@@ -36,7 +36,7 @@ class DemocracyCog(Cog):
         await ctx.send(f"{target.nick} now represents you!")
 
     @commands.command()
-    async def representing(self, ctx: Context, target: discord.Member = None):
+    async def representing(self, ctx: Context, target: Optional[discord.Member] = None, votename: str = None):
         if target is None:
             target = ctx.author
         self._ensure_user_exists(target)
@@ -46,7 +46,7 @@ class DemocracyCog(Cog):
         if(representative_id):
             representative = ctx.guild.get_member(representative_id)
             representative_string = representative.nick
-        representing_id = self._get_representing_users(target)
+        representing_id = self._get_representing_users(target, votename)
         representing_string = "None"
         if bool(representing_id):
             representing_string = "\n".join(ctx.guild.get_member(member_id).nick for member_id in representing_id)
@@ -99,13 +99,9 @@ class DemocracyCog(Cog):
             if not (m.content.replace(" ","").isnumeric()
             and m.channel == ctx.channel
             and m.author == ctx.author):
-                print(1)
                 return False
             numlist = list(map(int, m.content.split()))
             unique = bool(len(numlist) == len(set(numlist)))
-            for e in vote:
-                print(e)
-            print(numlist)
             return (unique and len(numlist) <= len(vote)
             and max(numlist) <= len(vote))
 
@@ -129,6 +125,7 @@ class DemocracyCog(Cog):
             participating = set()
         else:
             participating = dm.lookup_voting_by_votename(vote)
+        participating.add(user.id)
         total_representing_id = set()
         looking = Queue()
         looking.put_nowait(str(user.id))
