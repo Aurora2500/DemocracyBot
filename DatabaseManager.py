@@ -1,6 +1,7 @@
-# MyDatabase.py
+# DatabaseManager.py
 
 import _sqlite3
+from typing import Set
 
 from Ballot import Ballot
 from Vote import Vote
@@ -122,10 +123,16 @@ def lookup_vote_by_votename(votename: str) -> Vote:
         return Vote.from_database(c.fetchone())
 
 
-def lookup_representing(userid: str):
+def lookup_representing(representativeid: str) -> Set[str]:
     with DBCursor(database) as c:
-        c.execute('SELECT userid FROM members WHERE representativeid = ?', (userid,))
-        return [item[0] for item in c.fetchall()]
+        c.execute('SELECT userid FROM members WHERE representativeid = ?', (representativeid,))
+        return set(item[0] for item in c.fetchall())
+
+
+def lookup_voting_by_votename(votename: str) -> Set[str]:
+    with DBCursor(database) as c:
+        c.execute('SELECT userid FROM ballots WHERE votename = ?', (votename,))
+        return set(item[0] for item in c.fetchall())
 
 
 def delete_vote(votename: str) -> bool:
