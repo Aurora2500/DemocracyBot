@@ -1,6 +1,5 @@
 # Ballot.py
-
-from typing import List
+from typing import List, NamedTuple
 
 class Ballot:
     def __init__(self, userid: str, votename: str, ranking: List[int]):
@@ -14,3 +13,11 @@ class Ballot:
         for i, e in enumerate(self.ranking):
             rv[i] = e
         return rv
+
+    @classmethod
+    def from_database(cls, data):
+        return cls(votename=data[0], userid=data[1], ranking=data[2:])
+
+class CountedBallot(NamedTuple):
+    ballot: Ballot
+    count: int

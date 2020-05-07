@@ -1,10 +1,10 @@
 # DatabaseManager.py
 
 import _sqlite3
-from typing import Set
+from typing import Set, List
 
-from Ballot import Ballot
-from Vote import Vote
+from ballot import Ballot
+from vote import Vote
 
 #Name of the database file
 database = "Democracy.db"
@@ -62,16 +62,11 @@ def create_user(userid: str):  # Inserts a row in the members database, use this
         raise RowExistsError  # A user may only have one entry
 
 
-def create_vote(votename: str, *options):  # Creates a new vote with up to 5 options
-    if not vote_exists(votename):
-        optiontuple = (  # The database requires 5 columns of options, this fills the empty ones with blanks
-            options[i]
-            if len(options) > i
-            else ''
-            for i in range(5)
-        )
+def create_vote(vote: Vote) -> None:  # Creates a new vote with up to 5 options
+    if not vote_exists(vote):
+        optiontuple = (vote.options + [0] * (5 - len(vote)))
         with DBCursor(database) as c:
-            c.execute('INSERT INTO votes VALUES(?, ?, ?, ?, ?, ?)', (votename, *optiontuple))
+            c.execute('INSERT INTO votes VALUES(?, ?, ?, ?, ?, ?)', (vote.name, *optiontuple))
     else:
         raise RowExistsError  # There should only be one vote
 
@@ -93,28 +88,31 @@ def represent(userid: str, targetid: str):  # Updates
         raise KeyError(0)
 
 
-def lookup_representative(userid: str):  #
+def lookup_representative(userid: str):  # 
     with DBCursor(database) as c:
         c.execute('SELECT  representativeid FROM members WHERE userid = ?', (userid,))
         return c.fetchone()[0]
 
 
-def lookup_ballots_by_vote(votename: str):
+def lookup_ballots_by_vote(votename: str) -> List[Ballot]:
     with DBCursor(database) as c:
         c.execute('SELECT * FROM ballots WHERE votename = ?', (votename,))
-        return c.fetchall()
+        return [
+            Ballot.from_database(elem)
+            for elem in c.fetchall()
+        ]
 
 
-def lookup_ballots_by_user(userid: str):
+def lookup_ballots_by_user(userid: str) -> List[Ballot]:
     with DBCursor(database) as c:
         c.execute('SELECT * FROM ballots WHERE userid = ?', (userid,))
-        return c.fetchall()
+        return [Ballot.from_database(elem) for elem in c.fetchall()]
 
 
-def lookup_votes():
+def lookup_votes() -> List[Vote]:
     with DBCursor(database) as c:
         c.execute('SELECT * FROM votes')
-        return c.fetchall()
+        return [Vote.from_database(elem) for elem in c.fetchall()]
 
 
 def lookup_vote_by_votename(votename: str) -> Vote:

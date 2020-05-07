@@ -3,14 +3,16 @@
 import asyncio
 from typing import List, Set, Optional
 from queue import Queue
+from collections import namedtuple
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
 
 import DatabaseManager as dm
-from Ballot import Ballot
-from Vote import Vote
+import election
+from ballot import Ballot, CountedBallot
+from vote import Vote
 
 
 user_not_registered = "You do not have an account!"
@@ -46,7 +48,7 @@ class DemocracyCog(Cog):
         if(representative_id):
             representative = ctx.guild.get_member(representative_id)
             representative_string = representative.nick
-        representing_id = self._get_representing_users(target, votename)
+        representing_id = self._get_representing_users(str(target.id), votename)
         representing_string = "None"
         if bool(representing_id):
             representing_string = "\n".join(ctx.guild.get_member(member_id).nick for member_id in representing_id)
@@ -57,10 +59,6 @@ class DemocracyCog(Cog):
         embed.add_field(name="Representing", value=representing_string, inline=False)
 
         await ctx.send(embed=embed)
-
-        
-        
-
 
     @commands.command()
     async def createvote(self, ctx: Context, votename: str):
@@ -80,11 +78,14 @@ class DemocracyCog(Cog):
             return
         options = options.content.split("\n")
         
-        dm.create_vote(votename, *options)
+        dm.create_vote(Vote(votename, options))
         await ctx.send("Vote created successfully")
-        
+    
+    @commands.group
+    async def vote(self, ctx):
+        pass
     @commands.command()
-    async def vote(self, ctx: Context, votename: str):
+    async def cast(self, ctx: Context, votename: str):
         if not dm.vote_exists(votename):
             await ctx.send("Vote doesn't exist!")
             return
@@ -116,19 +117,26 @@ class DemocracyCog(Cog):
         await ctx.send("Voted sucessfully!")
     
     @commands.command()
-    async def countup(self, ctx: Context, votename: str):
-        pass
+    async def countup(self, ctx: Context, votename: str, method: str = "fptp"):
+        ballot_collection = [
+            CountedBallot(ballot=ballot, count= 1 + len(self._get_representing_users(ballot.userid, votename)))
+            for ballot in dm.lookup_ballots_by_vote(votename)
+        ]
+        vote = dm.lookup_vote_by_votename(votename)
+        result = election.election[method](ballot_collection, vote)
 
+        
+        await ctx.send(result)
 
-    def _get_representing_users(self, user: discord.Member, vote: str = None) -> Set[int]:
+    def _get_representing_users(self, userid: str, vote: str = None) -> Set[int]:
         if vote is None:
             participating = set()
         else:
             participating = dm.lookup_voting_by_votename(vote)
-        participating.add(user.id)
+        participating.add(userid)
         total_representing_id = set()
         looking = Queue()
-        looking.put_nowait(str(user.id))
+        looking.put_nowait(userid)
         while not looking.empty():
             curent = looking.get_nowait()
             # you're not representing people who are participating
@@ -138,7 +146,6 @@ class DemocracyCog(Cog):
                 looking.put_nowait(member)
         
         return total_representing_id
-
 
     def _ensure_user_exists(self, user: discord.Member)-> bool: #return true if it needed to create an user
         if not dm.user_exists(str(user.id)):
