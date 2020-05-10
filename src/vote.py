@@ -4,10 +4,11 @@ from typing import List
 
 class Vote:
 
+    __slots__ = ('name', 'options')
+
     def __init__(self, name: str, options: List[str]):
         self.name = name
         self.options = [elem for elem in options if elem]
-        pass
 
     @classmethod
     def from_database(cls, data):

@@ -3,7 +3,7 @@
 import discord
 from discord.ext import commands
 
-from DemocracyCog import DemocracyCog
+from democracy_cog import DemocracyCog
 import Secret
 
 description = "desc"

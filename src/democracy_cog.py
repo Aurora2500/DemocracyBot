@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Cog, Context
 
-import DatabaseManager as dm
+import database_manager as dm
 import election
 from ballot import Ballot, CountedBallot
 from vote import Vote

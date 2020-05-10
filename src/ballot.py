@@ -2,6 +2,9 @@
 from typing import List, NamedTuple
 
 class Ballot:
+
+    __slots__ = ('userid', 'votename', 'ranking')
+
     def __init__(self, userid: str, votename: str, ranking: List[int]):
         self.userid = userid
         self.votename = votename
